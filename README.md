@@ -108,3 +108,33 @@ The steps to prepare and publish a release:
 
 > [!IMPORTANT]
 > The version number in the `debian/changelog.tmpl` drives the Debian package version number and is important.
+
+# Testing GitHub Workflow with Act
+
+You can locally test changes to GitHub workflows using [`act`](https://github.com/nektos/act), which simulates the GitHub Actions environment on your local machine.
+
+### Instructions
+
+1. **Initialize Git Submodules** (if your project uses them):
+    ```bash
+    git submodule init
+    git submodule update
+    ```
+
+2. **Run Act:**
+* Set ACTPATH to the path where act is installed. Replace `/path/to/act` with your actual installation path if necessary:
+
+    ```bash
+    export ACTPATH=/path/to/act
+    ```
+
+* Run act to test the push event, specifying an artifact output path:
+
+    ```bash
+    $ACTPATH/act push --artifact-server-path ~/output
+    ```
+
+Notes:
+
+Make sure act is installed and accessible. You can install it by following the instructions [`here`](https://github.com/nektos/act#installation).
+The `--artifact-server-path` `~/output` option saves artifacts to `~/output`, which you can customize as needed.
