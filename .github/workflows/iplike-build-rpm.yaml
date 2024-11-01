@@ -17,9 +17,6 @@
         - uses: actions/checkout@v4
           with:
             submodules: 'true'
-        - name: Announce start
-          run: |
-            echo "-------Starting RPM------"
         - name: Install RPM Build Dependencies
           run: |
             sudo apt-get update -q

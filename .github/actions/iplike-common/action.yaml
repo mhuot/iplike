@@ -9,22 +9,22 @@ runs:
   using: "composite"
   steps:
     - uses: actions/checkout@v4
-    - name: Start
-      run: echo "Start"
     - name: Add workspace to git safe.directory
       run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      shell: bash
     - name: Update generated configuration files
       run: |
         libtoolize --copy --force
         autoreconf -fvi
+      shell: bash
     - name: Configure and build from source
       run: |
         ./configure --with-pgsql=/usr/lib/postgresql/${{ inputs.pg_version }}/bin/pg_config
         make
-    - name: End
-      run: echo "End"
+      shell: bash
     - name: Install Node.js (for act local testing)
       if: runner.os == 'Linux' && env.ACT
       run: |
         curl -fsSL https://deb.nodesource.com/setup_21.x | sudo -E bash -
-        sudo apt-get install -y nodejs      
+        sudo apt-get install -y nodejs
+      shell: bash

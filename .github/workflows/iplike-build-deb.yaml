@@ -17,9 +17,6 @@
         - uses: actions/checkout@v4
           with:
             submodules: 'true'
-        - name: Announce start
-          run: |
-            echo "-------Starting DEB------"
         - name: Perform common steps
           uses: ./.github/actions/iplike-common
           with:
