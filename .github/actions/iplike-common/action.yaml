@@ -1,0 +1,30 @@
+---
+name: iplike Common Setup Action
+description: Sets up environment to build PostgreSQL iplike extension
+inputs:
+  pg_version:
+    description: "PostgreSQL version"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v4
+    - name: Start
+      run: echo "Start"
+    - name: Add workspace to git safe.directory
+      run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+    - name: Update generated configuration files
+      run: |
+        libtoolize --copy --force
+        autoreconf -fvi
+    - name: Configure and build from source
+      run: |
+        ./configure --with-pgsql=/usr/lib/postgresql/${{ inputs.pg_version }}/bin/pg_config
+        make
+    - name: End
+      run: echo "End"
+    - name: Install Node.js (for act local testing)
+      if: runner.os == 'Linux' && env.ACT
+      run: |
+        curl -fsSL https://deb.nodesource.com/setup_21.x | sudo -E bash -
+        sudo apt-get install -y nodejs      

@@ -1,0 +1,49 @@
+---
+  name: iplike-build-deb
+  run-name: Build PostgreSQL iplike extension
+  on:
+    push:
+  
+  ## Build and create the project on every push to the project
+  jobs:
+    build:
+      strategy:
+        matrix:
+          pg_version: [ 11 ]
+          # pg_version: [ 10, 11, 12, 13, 14, 15, 16, 17 ]
+      runs-on: ubuntu-latest
+      container:
+        image: quay.io/bluebird/iplike-builder:0.2.0.b1
+      steps:
+        - uses: actions/checkout@v4
+          with:
+            submodules: 'true'
+        - name: Announce start
+          run: |
+            echo "-------Starting DEB------"
+        - name: Perform common steps
+          uses: ./.github/actions/iplike-common
+          with:
+            pg_version: ${{ matrix.pg_version }}
+        - name: Create Debian packages
+          run: |
+            cd ${GITHUB_WORKSPACE}
+            dpkg-buildpackage -us -uc
+        - name: Collect build artifacts
+          run: |
+            mkdir -p ${GITHUB_WORKSPACE}/debian/artifacts
+            mv -v ../iplike-pgsql* ${GITHUB_WORKSPACE}/debian/artifacts
+        - name: Persist build artifacts
+          uses: actions/upload-artifact@v4
+          with:
+            name: iplike-pgsql-deb-${{ matrix.pg_version }}
+            path: ./debian/artifacts/*
+        - name: Publish Debian packages to Cloudsmith
+          # Only publish release artifacts on pushing a Git tag with a version number starting with v*
+          if: startsWith(github.ref, 'refs/tags/v') && !env.ACT
+          shell: bash
+          run: |
+            export CLOUDSMITH_API_KEY=${{ secrets.CLOUDSMITH_API_KEY }}
+            for deb in $(ls debian/artifacts/iplike-pgsql${{ matrix.pg_version }}_*.deb); do
+              cloudsmith push deb bluebird/common/any-distro/any-version ${deb};
+            done;

@@ -1,0 +1,78 @@
+---
+  name: iplike-build-rpm
+  run-name: Build PostgreSQL iplike extension
+  on:
+    push:
+  
+  ## Build and create the project on every push to the project
+  jobs:
+    build:
+      strategy:
+        matrix:
+          pg_version: [ 10 ]
+          # pg_version: [ 10, 11, 12, 13, 14, 15, 16, 17 ]
+      runs-on: ubuntu-latest
+      container:
+        image: quay.io/bluebird/iplike-builder:0.2.0.b1
+      steps:
+        - uses: actions/checkout@v4
+          with:
+            submodules: 'true'
+        - name: Announce start
+          run: |
+            echo "-------Starting RPM------"
+        - name: Install RPM Build Dependencies
+          run: |
+            sudo apt-get update -q
+            sudo apt-get install -qy \
+              rpm \
+              build-essential \
+              postgresql-server-dev-${{ matrix.pg_version }}
+            sudo ln -s /usr/include/postgresql /usr/include/postgresql-devel
+        - name: Perform common steps
+          uses: ./.github/actions/iplike-common
+          with:
+            pg_version: ${{ matrix.pg_version }}
+        - name: Prepare RPM Build Environment
+          run: |
+            mkdir -p ${GITHUB_WORKSPACE}/rpmbuild/BUILD
+            mkdir -p ${GITHUB_WORKSPACE}/rpmbuild/BUILDROOT
+            mkdir -p ${GITHUB_WORKSPACE}/rpmbuild/RPMS
+            mkdir -p ${GITHUB_WORKSPACE}/rpmbuild/SPECS
+            mkdir -p ${GITHUB_WORKSPACE}/rpmbuild/SRPMS
+        - name: Create source tarball for SRPMS
+          run: |
+            mkdir -p ${GITHUB_WORKSPACE}/rpmbuild/SOURCES
+
+            # Create the source tarball and move it to the SOURCES directory
+            VERSION=$(grep 'm4_define(\[VERSION_NUMBER\],' version.m4 | sed -n 's/^m4_define(\[VERSION_NUMBER\],\[\(.*\)\]).*/\1/p')
+            mkdir -p /tmp/iplike-${VERSION}
+            cp -r . /tmp/iplike-${VERSION}
+            cd /tmp && \
+            tar --exclude=rpmbuild --exclude=.git -czf ${GITHUB_WORKSPACE}/rpmbuild/SOURCES/iplike-${VERSION}.tar.gz iplike-${VERSION}
+        - name: Build RPM Package
+          run: |
+            cp ./iplike.spec ${GITHUB_WORKSPACE}/rpmbuild/SPECS/
+            rpmbuild -ba ${GITHUB_WORKSPACE}/rpmbuild/SPECS/iplike.spec \
+              --define "_topdir ${GITHUB_WORKSPACE}/rpmbuild" \
+              --define "buildroot ${GITHUB_WORKSPACE}/rpmbuild/BUILDROOT" \
+              --nodeps 
+        - name: Persist rpms
+          uses: actions/upload-artifact@v4
+          with:
+            name: iplike-pgsql-rpm-${{ matrix.pg_version }}
+            path: ./rpmbuild/RPMS/*/*.rpm
+        - name: Persist srpms
+          uses: actions/upload-artifact@v4
+          with:
+            name: iplike-pgsql-srpm-${{ matrix.pg_version }}
+            path: ./rpmbuild/SRPMS/*  
+        # - name: Publish Debian packages to Cloudsmith
+        #   # Only publish release artifacts on pushing a Git tag with a version number starting with v*
+        #   if: startsWith(github.ref, 'refs/tags/v') && !env.ACT
+        #   shell: bash
+        #   run: |
+        #     export CLOUDSMITH_API_KEY=${{ secrets.CLOUDSMITH_API_KEY }}
+        #     for deb in $(ls debian/artifacts/iplike-pgsql${{ matrix.pg_version }}_*.deb); do
+        #       cloudsmith push deb bluebird/common/any-distro/any-version ${deb};
+        #     done;
